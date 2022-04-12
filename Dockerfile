@@ -1,6 +1,6 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
 COPY requirements.txt ./
-RUN apt-get install gcc libffi-dev build-essential libssl-dev python-dev
+RUN apt-get install gcc libffi-dev
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 5000
