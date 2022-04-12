@@ -1,2 +1,3 @@
 TOKEN_SECTION = 'Token' 
+USER_SECTION = 'User' 
 DEFAULT_PREFIX = '/api'
