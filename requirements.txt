@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pymongo
+jwt
+pydantic
+passlib
+python-multipart
+one
+bcrypt
+cryptography
+python-jose
