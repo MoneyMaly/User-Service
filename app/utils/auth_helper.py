@@ -6,9 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.adapters.db_adapter import get_user_by_username
-
-from app.models.tokenmodel import TokenData
-from app.models.usermodel import User
+from app.models import TokenData
+from app.models import User
 from app.settings import APP_SECRET_KEY, ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

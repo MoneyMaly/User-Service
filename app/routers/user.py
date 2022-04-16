@@ -2,8 +2,7 @@ from fastapi import APIRouter, HTTPException
 from starlette import status
 from app.adapters.db_adapter import insert_user, get_user_by_username, delete_user_by_username
 from app.errors import UserNotFoundError, UserAlreadyExistsError
-from app.models.models import Message
-from app.models.usermodel import NewUser, UserFromDB
+from app.models import NewUser, UserFromDB, Message
 from app.utils.auth_helper import pwd_context
 from app.utils.db_helper import to_jsonable_dict
 

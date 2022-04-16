@@ -2,7 +2,7 @@ import pymongo
 from bson import ObjectId
 
 from app.errors import UserNotFoundError, UserAlreadyExistsError
-from app.models.usermodel import UserInDB
+from app.models import UserInDB
 
 client = None
 db = None

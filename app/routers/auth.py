@@ -1,7 +1,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from app.models.tokenmodel import Token
+from app.models import Token
 from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES
 from app.utils.auth_helper import authenticate_user, create_access_token
 
