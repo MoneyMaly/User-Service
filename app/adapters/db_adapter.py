@@ -24,3 +24,12 @@ async def get_user_by_username(username: str):
     if username == user['username']:
         return UserInDB(**user)
     raise UserNotFoundError(username)   
+
+async def delete_user_by_username(username: str):
+    user = await db['Users'].find_one({'username': username})
+    if not user:
+        raise UserNotFoundError(username)
+    if username == user['username']:
+        await db['Users'].delete_one({'username': username})
+    else:
+        raise UserNotFoundError(username)
