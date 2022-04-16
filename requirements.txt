@@ -3,6 +3,7 @@ uvicorn
 pymongo
 jwt
 pydantic
+starlette
 passlib
 python-multipart
 one
