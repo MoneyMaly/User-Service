@@ -1,24 +1,26 @@
-from urllib.parse import quote_plus
-from pymongo import MongoClient
-from uuid import uuid4
+import pymongo
+from bson import ObjectId
 
-from app.models.usermodel import User, UserInDB
-from app.settings import DATABASE_SERVER, DATABASE_USER, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_NAME
+from app.errors import UserNotFoundError, UserAlreadyExistsError
+from app.models.usermodel import UserInDB
 
-client = MongoClient(host=f'mongodb://{DATABASE_USER}:{quote_plus(DATABASE_PASSWORD)}@{DATABASE_SERVER}:{DATABASE_PORT}/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@moneymaly@')
-db = client[DATABASE_NAME]
+client = None
+db = None
 
-def insert_user(new_user, hashed_password):
-    user = UserInDB(**(new_user.__dict__))
+async def insert_user(new_user, hashed_password):
+    user = UserInDB(**dict(new_user))
     user.hashed_password = hashed_password
-    user.id = uuid4()
-    ret = db.Users.insert_one(user.dict(by_alias=True))
-    return {'user': user}
+    user.id = ObjectId()
+    try:
+        await db.Users.insert_one(user.dict(by_alias=True))
+    except pymongo.errors.DuplicateKeyError as e:
+        raise UserAlreadyExistsError(user.username)
+    return user
 
-
-def get_user(username: str):
-    user = db.Users.find_one({"username":username})
+async def get_user_by_username(username: str):
+    user = await db['Users'].find_one({'username': username})
     if not user:
-        return None
+        raise UserNotFoundError(username)
     if username == user['username']:
-        return UserInDB(**user)    
+        return UserInDB(**user)
+    raise UserNotFoundError(username)   

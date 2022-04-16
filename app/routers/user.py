@@ -1,17 +1,47 @@
-from fastapi import APIRouter, HTTPException, status
-
-from app.models.usermodel import NewUser, UserInDB, User
-from app.adapters.db_adapter import insert_user
+from fastapi import APIRouter, HTTPException
+from starlette import status
+from app.adapters.db_adapter import insert_user, get_user_by_username
+from app.errors import UserNotFoundError, UserAlreadyExistsError
+from app.models.models import Message
+from app.models.usermodel import NewUser, UserFromDB
 from app.utils.auth_helper import pwd_context
+from app.utils.db_helper import to_jsonable_dict
 
-
-router = APIRouter()
-
-@router.post("/users/")
+router = APIRouter(tags=['Users'])
+@router.post("/users", status_code=status.HTTP_201_CREATED,
+             response_model=UserFromDB, response_model_exclude=['hashed_password'],
+             responses={
+                 status.HTTP_403_FORBIDDEN: {'model': Message},
+                 status.HTTP_409_CONFLICT: {'model': Message},
+                 status.HTTP_500_INTERNAL_SERVER_ERROR: {'model': Message}
+             },
+             summary='Create New User', description='Create New User, user role can be private or business')
 async def create_user(new_user: NewUser):
-    if new_user.role in ["private","buisness"]:
+    if new_user.role not in ["private", "business"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User role is not valid")
+    try:
         hashed_password = pwd_context.hash(new_user.password)
         del new_user.password
-        insert_user(new_user, hashed_password)
-        return [{"item_id": "Foo", "owner": new_user.username}]
-    raise HTTPException(status_code=403, detail="User role forbidden") 
+        inserted_user = await insert_user(new_user, hashed_password)
+        return to_jsonable_dict(inserted_user.dict(by_alias=True))
+    except UserAlreadyExistsError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.get("/users", status_code=status.HTTP_200_OK,
+            response_model=UserFromDB, response_model_exclude=['hashed_password'],
+            responses={
+                status.HTTP_404_NOT_FOUND: {'model': Message},
+                status.HTTP_500_INTERNAL_SERVER_ERROR: {'model': Message}
+            },
+            summary='Get User', description='Get User by username or by id')
+
+async def get_user(username: str):
+    try:
+        user = await get_user_by_username(username)
+        return to_jsonable_dict(user.dict(by_alias=True))
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

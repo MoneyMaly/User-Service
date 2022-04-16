@@ -16,3 +16,7 @@ class UserInDB(User):
 
 class NewUser(User):
     password: str 
+
+class UserFromDB(User):
+    id: str = Field(alias='_id')
+    hashed_password: Optional[str] = None

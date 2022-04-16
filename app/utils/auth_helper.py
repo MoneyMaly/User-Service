@@ -5,28 +5,27 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from app.adapters.db_adapter import get_user_by_username
 
-from app.settings import APP_SECRET_KEY, ALGORITHM
 from app.models.tokenmodel import TokenData
-from app.models.usermodel import User, UserInDB
-from app.adapters.db_adapter import get_user
+from app.models.usermodel import User
+from app.settings import APP_SECRET_KEY, ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def verify_password(plain_password, hashed_password):
+async def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-
-def get_password_hash(password):
+async def get_password_hash(password):
     return pwd_context.hash(password)
 
-def authenticate_user(username: str, password: str):
-    user = get_user(username)
+async def authenticate_user(username: str, password: str):
+    user = await get_user_by_username(username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not await verify_password(password, user.hashed_password):
         return False
     return user
 
@@ -44,7 +43,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(username=token_data.username)
+    user = await get_user_by_username(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -55,7 +54,7 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+async def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -63,4 +62,4 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, APP_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt 
+    return encoded_jwt
