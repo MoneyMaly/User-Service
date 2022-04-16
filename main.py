@@ -1,22 +1,42 @@
 import uvicorn
 from fastapi import FastAPI
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from motor import motor_asyncio
 from passlib.context import CryptContext
-
+from starlette.responses import JSONResponse
+from app import settings
+from app.adapters import db_adapter
 from app.routers import auth, user
-from app.consts import DEFAULT_PREFIX, TOKEN_SECTION, USER_SECTION
+from app.settings import DATABASE_USER, DATABASE_PORT, DATABASE_PASSWORD, DATABASE_SERVER
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-app = FastAPI()
-
-@app.get('/')
-async def index():
-  return {'hello': 'world'}
+app = FastAPI(title='User Service API')
 
 # routers
-app.include_router(auth.router, tags=[TOKEN_SECTION])
-app.include_router(user.router, prefix=DEFAULT_PREFIX, tags=[USER_SECTION])
+app.include_router(auth.router)
+app.include_router(user.router)
+
+@app.exception_handler(Exception)
+async def exception_handler(request, exception: Exception):
+    return JSONResponse(status_code=500, content={'detail': type(exception).__name__})
+
+
+async def setup_db():
+    url = f'mongodb://{DATABASE_USER}:{quote_plus(DATABASE_PASSWORD)}@{DATABASE_SERVER}:{DATABASE_PORT}' \
+          f'/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@money-maly@'
+    db_adapter.client = motor_asyncio.AsyncIOMotorClient(url, w='majority', socketTimeoutMS=5000, j=True, wtimeout=5000)
+    return db_adapter.client[settings.DATABASE_NAME]
+
+
+@app.on_event('startup')
+async def before_server_start():
+    try:
+        db_adapter.db = await setup_db()
+    except:
+        pass
+
+@app.on_event('shutdown')
+async def before_server_stop():
+    db_adapter.client.close()
 
 if __name__ == '__main__':  # For Debugging
     uvicorn.run(app, host='0.0.0.0', port=5000)

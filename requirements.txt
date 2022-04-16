@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-pymongo
+motor==2.0.0
 jwt
 pydantic
 starlette
