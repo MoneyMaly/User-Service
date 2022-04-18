@@ -53,7 +53,7 @@ async def get_user(username: str):
                    status.HTTP_500_INTERNAL_SERVER_ERROR: {'model': Message}
                },
                summary='Get User', description='Get User by username or by id')
-async def get_user(username: str):
+async def delete_user(username: str):
     try:
         await delete_user_by_username(username)
         return Message(detail=f'User {username} Successfully Deleted')
