@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from starlette import status
 from app.adapters.db_adapter import insert_user, get_user_by_username, delete_user_by_username
 from app.errors import UserNotFoundError, UserAlreadyExistsError
-from app.models import NewUser, UserFromDB, Message
-from app.utils.auth_helper import pwd_context
+from app.models import NewUser, UserFromDB, Message, User
+from app.utils.auth_helper import pwd_context, get_current_user
 from app.utils.db_helper import to_jsonable_dict
 
 router = APIRouter(tags=['Users'])
@@ -37,9 +37,8 @@ async def create_user(new_user: NewUser):
             },
             summary='Get User', description='Get User by username or by id')
 
-async def get_user(username: str):
+async def get_user(user: User = Depends(get_current_user)):
     try:
-        user = await get_user_by_username(username)
         return to_jsonable_dict(user.dict(by_alias=True))
     except UserNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
