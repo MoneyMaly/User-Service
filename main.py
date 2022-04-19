@@ -1,20 +1,19 @@
+from urllib.parse import quote_plus
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from motor import motor_asyncio
 from passlib.context import CryptContext
 from starlette.responses import JSONResponse
+
 from app import settings
 from app.adapters import db_adapter
 from app.routers import auth, user
 from app.settings import DATABASE_USER, DATABASE_PORT, DATABASE_PASSWORD, DATABASE_SERVER
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app = FastAPI(title='User Service API')
-
-# routers
-app.include_router(auth.router)
-app.include_router(user.router)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +22,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# routers
+app.include_router(auth.router)
+app.include_router(user.router)
 
 @app.exception_handler(Exception)
 async def exception_handler(request, exception: Exception):
@@ -34,7 +37,6 @@ async def setup_db():
           f'/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@money-maly@'
     db_adapter.client = motor_asyncio.AsyncIOMotorClient(url, w='majority', socketTimeoutMS=5000, j=True, wtimeout=5000)
     return db_adapter.client[settings.DATABASE_NAME]
-
 
 @app.on_event('startup')
 async def before_server_start():

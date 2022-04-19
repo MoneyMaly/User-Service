@@ -1,25 +1,22 @@
 from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+import time
 from app.adapters.db_adapter import get_user_by_username
 from app.errors import UnverifiedPasswordError
 from app.models import TokenData
 # from app.models import User
 from app.settings import APP_SECRET_KEY, ALGORITHM
 
+#region user cred login
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def verify_password(plain_password, hashed_password):
     if pwd_context.verify(plain_password, hashed_password):
         return True
     raise UnverifiedPasswordError()
-
-# async def get_password_hash(password):
-#     return pwd_context.hash(password)
 
 async def authenticate_user(username: str, password: str):
     user = await get_user_by_username(username)
@@ -33,26 +30,37 @@ async def create_access_token(data: dict, expires_time_in_minutes: int = 15):
     encoded_jwt = jwt.encode(to_encode, APP_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, APP_SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("username")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
-    user = await get_user_by_username(username=token_data.username)
-    if user is None:
-        raise credentials_exception
-    return user
-
+#endregion 
 # async def get_current_active_user(current_user: User = Depends(get_current_user)):
 #     if current_user.disabled:
 #         raise HTTPException(status_code=400, detail="Inactive user")
 #     return current_user
+#region verify token
+class JWTBearer(HTTPBearer):
+    def __init__(self, auto_error: bool = True):
+        super(JWTBearer, self).__init__(auto_error=auto_error)
+
+    async def __call__(self, request: Request):
+        credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
+        if credentials:
+            if not credentials.scheme == "Bearer":
+                raise HTTPException(status_code=403, detail="Invalid authentication scheme.")
+            if not self.verify_jwt(credentials.credentials):
+                raise HTTPException(status_code=403, detail="Invalid token or expired token.")
+            return credentials.credentials
+        else:
+            raise HTTPException(status_code=403, detail="Invalid authorization code.")
+
+    def verify_jwt(self, jwtoken: str) -> bool:
+        isTokenValid: bool = False
+        try:
+            decoded_token =  jwt.decode(jwtoken, APP_SECRET_KEY, algorithms=[ALGORITHM])
+            if not decoded_token["exp"] >= time.time():
+                raise
+        except:
+            decoded_token = None
+        if decoded_token:
+            isTokenValid = True
+        return isTokenValid
+
+#endregion 
