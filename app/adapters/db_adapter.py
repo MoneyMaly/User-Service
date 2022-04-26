@@ -13,7 +13,7 @@ async def insert_user(new_user, hashed_password):
     user.id = ObjectId()
     try:
         await db.Users.insert_one(user.dict(by_alias=True))
-    except pymongo.errors.DuplicateKeyError as e:
+    except pymongo.errors.DuplicateKeyError:
         raise UserAlreadyExistsError(user.username)
     return user
 

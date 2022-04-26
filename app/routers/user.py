@@ -7,6 +7,12 @@ from app.utils.auth_helper import pwd_context, JWTBearer
 from app.utils.db_helper import to_jsonable_dict
 
 router = APIRouter(tags=['Users'])
+
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"})
+
 @router.post("/users", status_code=status.HTTP_201_CREATED,
              response_model=UserFromDB, response_model_exclude=['hashed_password'],
              responses={
@@ -30,7 +36,7 @@ async def create_user(new_user: NewUser):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.get("/users", status_code=status.HTTP_200_OK, dependencies=[Depends(JWTBearer())],
-            response_model=UserFromDB, response_model_exclude=['hashed_password'],
+            response_model=UserFromDB, response_model_exclude=['hashed_password','disabled','id'],
             responses={
                 status.HTTP_404_NOT_FOUND: {'model': Message},
                 status.HTTP_500_INTERNAL_SERVER_ERROR: {'model': Message}
@@ -38,6 +44,8 @@ async def create_user(new_user: NewUser):
             summary='Get User', description='Get User by username or by id')
 
 async def get_user(username: str):
+    if JWTBearer.authenticated_username != username:
+        raise credentials_exception
     try:
         user = await get_user_by_username(username)
         return to_jsonable_dict(user.dict(by_alias=True))
