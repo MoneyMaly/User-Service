@@ -7,6 +7,7 @@ class User(BaseModel):
     role: str
     email: Optional[str] = None
     full_name: Optional[str] = None
+    phone: str
     disabled: Optional[bool] = False
 
 class UserInDB(User):
