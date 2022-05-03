@@ -33,3 +33,7 @@ async def delete_user_by_username(username: str):
         await db['Users'].delete_one({'username': username})
     else:
         raise UserNotFoundError(username)
+
+async def update_users_data(username: str, phone: str, email: str):
+    res = await db['Users'].update_one({"username": username},{"$set":{"phone": phone, "email":email}})
+    return True 

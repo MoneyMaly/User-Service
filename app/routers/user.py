@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from starlette import status
-from app.adapters.db_adapter import insert_user, get_user_by_username, delete_user_by_username
+from app.adapters.db_adapter import insert_user, get_user_by_username, delete_user_by_username, update_users_data
 from app.errors import UserNotFoundError, UserAlreadyExistsError
 from app.models import NewUser, UserFromDB, Message, User
 from app.utils.auth_helper import pwd_context, JWTBearer
@@ -69,3 +69,22 @@ async def delete_user(username: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.put("/users", status_code=status.HTTP_200_OK,
+               dependencies=[Depends(JWTBearer())],
+               responses={
+                   status.HTTP_404_NOT_FOUND: {'model': Message},
+                   status.HTTP_500_INTERNAL_SERVER_ERROR: {'model': Message}
+               },
+               summary='Get User', description='Get User by username or by id')
+async def update_user(username: str, phone: str, email: str):
+    if JWTBearer.authenticated_username != username:
+            raise credentials_exception
+    try:
+        res = await update_users_data(username, phone, email)
+        return res
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 
